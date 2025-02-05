@@ -1,0 +1,1 @@
+FFMPEG: https://stackoverflow.com/questions/24961127/how-to-create-a-video-from-images-with-ffmpeg

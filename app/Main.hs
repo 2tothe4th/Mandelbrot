@@ -9,18 +9,18 @@ import Graphics.Image.Interface hiding (map)
 import Control.Monad.Primitive
 import Graphics.Image.ColorSpace hiding (magnitude, map)
 import Graphics.Image hiding (magnitude, map)
+import Data.Fixed
+import Numeric
 
-{-
+
 specifiedResolution :: Integer
-specifiedResolution = round 10e+9
+specifiedResolution = 1_000_000
 
 data CustomE
 
 instance HasResolution CustomE where
-    resolution _ = specifiedResolution-}
+    resolution _ = specifiedResolution
 
-iterations :: Int
-iterations = 30
 
 qfix :: (a -> a) -> a -> Int -> (a -> Bool) -> Int
 qfix _ _ 0 _ = 0
@@ -28,9 +28,24 @@ qfix f !x !i p
     | not (p x) = i 
     | otherwise = qfix f (f x) (i - 1) p
 
+newtype NewFixed r = NewFixed (Fixed r) deriving (Eq, Ord, Num, Real, RealFrac, Fractional)
 
-m :: (Num a, RealFloat a, Ord a) => Complex a -> Int
-m x = qfix (\y -> y * y + x) 0 iterations ((<= 2) . magnitude)
+instance HasResolution r => Floating (NewFixed r)
+instance HasResolution r => RealFloat (NewFixed r) where
+    decodeFloat x = (0, 0)
+
+{-
+instance HasResolution r => Ord (Complex (NewFixed r))
+instance HasResolution r => Real (Complex (NewFixed r))
+instance HasResolution r => RealFrac (Complex (NewFixed r))
+instance HasResolution r => RealFloat (Complex (NewFixed r))-}
+    
+
+magnitudeSquared :: Num a => Complex a -> a
+magnitudeSquared (a :+ b) = a * a + b * b
+
+m :: (Num a, RealFloat a, Ord a) => Complex a -> Int -> Int
+m x i  = qfix (\y -> y * y + x) 0 i ((<= 4) . magnitudeSquared)
  
  {-
 --render :: Complex
@@ -61,10 +76,10 @@ screenHeight = 720-}
 lerp :: Num a => a -> a -> a -> a
 lerp a b t = (1 - t) * a + b * t
 
-elemMul :: Num a => Complex a -> Complex a -> Complex a
+elemMul :: RealFloat a => Complex a -> Complex a -> Complex a
 elemMul (a :+ b) (c :+ d) = a * c :+ b * d
 
-elemDiv :: Fractional a => Complex a -> Complex a -> Complex a
+elemDiv :: RealFloat a => Complex a -> Complex a -> Complex a
 elemDiv (a :+ b) (c :+ d) = a / c :+ b / d
 
 
@@ -75,21 +90,31 @@ getPixelPosition z = let a :+ b = s `elemMul` ((z - bottomLeft) `elemDiv` (topRi
 
 getWorldPosition :: (RealFloat a) => (Int, Int) -> Complex a -> Complex a -> Int -> Int -> Complex a
 getWorldPosition (b, a) bottomLeft topRight screenWidth screenHeight = bottomLeft + (topRight - bottomLeft) `elemMul` 
-    ((fromIntegral a :+ fromIntegral b) `elemDiv` ((fromIntegral screenWidth - 1) :+ (fromIntegral screenHeight - 1))) 
+    ((fromIntegral a :+ (fromIntegral screenHeight - 1 - fromIntegral b)) `elemDiv` ((fromIntegral screenWidth - 1) :+ (fromIntegral screenHeight - 1))) 
 
 color :: Int -> Pixel RGB Double
-color i = if i == 0 then PixelRGB 0 0 0 else PixelRGB 255 255 255 
+color i = PixelRGB t t t 
+    where 
+        t = lerp 0 1 ((-exp (-fromIntegral i / 50) + 1) :: Double)
 
-zoom :: Fractional a => a -> a -> [a] -> [a]
+zoom :: RealFloat a => Complex a -> Complex a -> [Complex a] -> [Complex a]
 zoom value pivot = map (\x -> (x - pivot) / value + pivot)
+
+pan :: RealFloat a => Complex a -> [Complex a] -> [Complex a]
+pan value = map (+ value)
 
 main :: IO ()
 main = do
-    let screenWidth = 1280
-    let screenHeight = 720
+    let screenWidth = 1920
+    let screenHeight = 1080
 
-    let [bottomLeft, topRight] = zoom 50 (-2) [-(8 :+ 4.5), 8 :+ 4.5]
+    let center = -1.74
+    let zoomValue = 100 :: Complex (NewFixed CustomE)
 
-    let image = makeImageR VU (screenHeight, screenWidth) (\x -> color $ m $ getWorldPosition x bottomLeft topRight screenWidth screenHeight)
+    let iterations = 100
+
+    let [bottomLeft, topRight] = zoom zoomValue center (pan center [-(8 :+ 4.5), 8 :+ 4.5])
+
+    let image = makeImageR VU (screenHeight, screenWidth) (\x -> color (m (getWorldPosition x bottomLeft topRight screenWidth screenHeight) iterations))
     writeImage "output.png" image
     putStrLn "Hello"

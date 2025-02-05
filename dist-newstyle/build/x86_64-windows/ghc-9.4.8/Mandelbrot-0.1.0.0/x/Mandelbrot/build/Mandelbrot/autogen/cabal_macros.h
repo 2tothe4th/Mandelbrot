@@ -40,6 +40,16 @@
   (major1) == 1 && (major2) <  5 || \
   (major1) == 1 && (major2) == 5 && (minor) <= 6)
 #endif /* MIN_VERSION_hip */
+/* package numbers-3000.2.0.2 */
+#ifndef VERSION_numbers
+#define VERSION_numbers "3000.2.0.2"
+#endif /* VERSION_numbers */
+#ifndef MIN_VERSION_numbers
+#define MIN_VERSION_numbers(major1,major2,minor) (\
+  (major1) <  3000 || \
+  (major1) == 3000 && (major2) <  2 || \
+  (major1) == 3000 && (major2) == 2 && (minor) <= 0)
+#endif /* MIN_VERSION_numbers */
 /* package primitive-0.9.0.0 */
 #ifndef VERSION_primitive
 #define VERSION_primitive "0.9.0.0"
