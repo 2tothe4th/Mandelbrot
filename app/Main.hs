@@ -120,7 +120,7 @@ main = do
     let [bottomLeft, topRight] = [-(8 :+ 4.5), 8 :+ 4.5]
 
     let targetZoom = 100 :: NewFixed CustomE
-    let secondsPer10x = 5 
+    let secondsPer10x = 1 
     let frameRate = 60
 
     forM_ [0..(ceiling $ frameRate * secondsPer10x * 2)] (\i -> do
