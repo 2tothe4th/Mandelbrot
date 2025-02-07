@@ -1,1 +1,2 @@
-FFMPEG: https://stackoverflow.com/questions/24961127/how-to-create-a-video-from-images-with-ffmpeg
+FFMPEG: [text]https://stackoverflow.com/questions/24961127/how-to-create-a-video-from-images-with-ffmpeg  
+[text](https://askubuntu.com/questions/648603/how-to-create-an-animated-gif-from-mp4-video-via-command-line/837574#837574)

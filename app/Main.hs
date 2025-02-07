@@ -11,6 +11,7 @@ import Graphics.Image.ColorSpace hiding (magnitude, map)
 import Graphics.Image hiding (magnitude, map)
 import Data.Fixed
 import Numeric
+import GHC.Real
 
 
 specifiedResolution :: Integer
@@ -92,13 +93,16 @@ getWorldPosition :: (RealFloat a) => (Int, Int) -> Complex a -> Complex a -> Int
 getWorldPosition (b, a) bottomLeft topRight screenWidth screenHeight = bottomLeft + (topRight - bottomLeft) `elemMul` 
     ((fromIntegral a :+ (fromIntegral screenHeight - 1 - fromIntegral b)) `elemDiv` ((fromIntegral screenWidth - 1) :+ (fromIntegral screenHeight - 1))) 
 
-color :: Int -> Pixel RGB Double
-color i = PixelRGB t t t 
-    where 
-        t = lerp 0 1 ((-exp (-fromIntegral i / 50) + 1) :: Double)
+clamp :: Ord a => a -> a -> a -> a 
+clamp low high = min high . max low
 
-zoom :: RealFloat a => Complex a -> Complex a -> [Complex a] -> [Complex a]
-zoom value pivot = map (\x -> (x - pivot) / value + pivot)
+color :: Int -> Pixel RGB Double
+color i = if i == 0 then PixelRGB 0 0 0 else toPixelRGB $ PixelHSI t 0.5 0.5
+    where 
+        t = ((fromIntegral i :: Double) / 100) `mod'` 1
+
+zoom :: RealFloat a => a -> Complex a -> [Complex a] -> [Complex a]
+zoom value pivot = map (\x -> (x - pivot) / (value :+ 0) + pivot)
 
 pan :: RealFloat a => Complex a -> [Complex a] -> [Complex a]
 pan value = map (+ value)
@@ -108,13 +112,20 @@ main = do
     let screenWidth = 1920
     let screenHeight = 1080
 
-    let center = -1.74
-    let zoomValue = 100 :: Complex (NewFixed CustomE)
+    let center = -1.74999
+    let startZoom = 1 :: NewFixed CustomE
 
-    let iterations = 100
+    let iterations = 1000
 
-    let [bottomLeft, topRight] = zoom zoomValue center (pan center [-(8 :+ 4.5), 8 :+ 4.5])
+    let [bottomLeft, topRight] = [-(8 :+ 4.5), 8 :+ 4.5]
 
-    let image = makeImageR VU (screenHeight, screenWidth) (\x -> color (m (getWorldPosition x bottomLeft topRight screenWidth screenHeight) iterations))
-    writeImage "output.png" image
+    let targetZoom = 100 :: NewFixed CustomE
+    let secondsPer10x = 5 
+    let frameRate = 60
+
+    forM_ [0..(ceiling $ frameRate * secondsPer10x * 2)] (\i -> do
+        let [newBottomLeft, newTopRight] = zoom (10 ** (fromIntegral i / frameRate / secondsPer10x)) center (pan center [-(8 :+ 4.5), 8 :+ 4.5])
+        let image = makeImageR VU (screenHeight, screenWidth) (\x -> color (m (getWorldPosition x newBottomLeft newTopRight screenWidth screenHeight) iterations))
+        writeImage ("Output/frame" ++ show i ++ ".png") image
+        )
     putStrLn "Hello"

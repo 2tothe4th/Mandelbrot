@@ -30,6 +30,16 @@
   (major1) == 4 && (major2) <  17 || \
   (major1) == 4 && (major2) == 17 && (minor) <= 2)
 #endif /* MIN_VERSION_base */
+/* package hgmp-0.1.2.1 */
+#ifndef VERSION_hgmp
+#define VERSION_hgmp "0.1.2.1"
+#endif /* VERSION_hgmp */
+#ifndef MIN_VERSION_hgmp
+#define MIN_VERSION_hgmp(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  1 || \
+  (major1) == 0 && (major2) == 1 && (minor) <= 2)
+#endif /* MIN_VERSION_hgmp */
 /* package hip-1.5.6.0 */
 #ifndef VERSION_hip
 #define VERSION_hip "1.5.6.0"
