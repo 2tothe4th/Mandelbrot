@@ -111,14 +111,16 @@ instance Precision p => Show (CFixed p) where
         uninterruptibleMask_ do
           pMantissa <- mpf_get_str nullPtr pExponent 10 0 pA
           mantissa <- peekCString pMantissa <* free pMantissa
-          exponent <- (+(-1)) <$> peek pExponent
+          exponent <- peek pExponent
 
           --https://machinecognitis.github.io/Math.Gmp.Native/html/9e7b9239-a7a8-4667-f6c7-bfc142d3f429.htm
           print exponent
-          if exponent >= 0 then
+          if fromIntegral exponent == length mantissa then
             pure mantissa
+          else if exponent >= 1 then
+            pure $ insertInto (fromIntegral exponent) '.' mantissa
           else do
-            let longerMantissa = replicate (-fromIntegral exponent) '0' ++ mantissa
+            let longerMantissa = replicate (-fromIntegral exponent + 1) '0' ++ mantissa
             pure $ insertInto 1 '.' longerMantissa
 
 
