@@ -18,7 +18,7 @@ newtype CFixed p = CF { value :: MPF }
   deriving (Storable) via MPF
 
 class Precision p where
-  getBitCount :: MPBitCnt
+  getBitCount :: p -> MPBitCnt
 
 newtype FException = FException { unfexception :: CInt }
   deriving (Storable, Show) via CInt
@@ -92,23 +92,40 @@ instance Precision p => Num (CFixed p) where
     (CF a) - (CF b) = CF $ performMPF2 mpf_sub a b
     abs (CF a) = CF $ performMPF1 mpf_abs a
     signum a
-      | a > 0 = fromBase10 "1" precision
-      | a == 0 = fromBase10 "0" precision
-      | otherwise = fromBase10 "-1" precision
-      where precision = getPrecision (value a)
-    fromInteger x = fromBase10 (show x) getBitCount
+      | a > 0 = 1
+      | a == 0 = 0
+      | otherwise = -1
+    fromInteger x = fromBase10 (show x) (getBitCount (undefined :: p))
+
+insertInto :: Int -> a -> [a] -> [a]
+insertInto 0 x xs = x : xs
+insertInto i x (y : ys) = y : insertInto (i - 1) x ys
+insertInto _ _ _ = undefined
 
 instance Precision p => Show (CFixed p) where
+  show :: Precision p => CFixed p -> String
   show (CF a) = unsafeDupablePerformIO do
     alloca \pA -> do
       poke pA a
-      alloca \pE -> do
-        pS <- mpf_get_str nullPtr pE 10 0 pA
-        peekCString pS <* free pS
-        
+      alloca \pExponent -> do
+        uninterruptibleMask_ do
+          pMantissa <- mpf_get_str nullPtr pExponent 10 0 pA
+          mantissa <- peekCString pMantissa <* free pMantissa
+          exponent <- (+(-1)) <$> peek pExponent
+
+          --https://machinecognitis.github.io/Math.Gmp.Native/html/9e7b9239-a7a8-4667-f6c7-bfc142d3f429.htm
+          print exponent
+          if exponent >= 0 then
+            pure mantissa
+          else do
+            let longerMantissa = replicate (-fromIntegral exponent) '0' ++ mantissa
+            pure $ insertInto 1 '.' longerMantissa
+
+
+
 
 instance Precision p => Fractional (CFixed p) where
-  CF a / CF b = CF $ performMPF2 mpf_div a b where _ = traceShowId (CF b)
+  CF a / CF b = CF $ performMPF2 mpf_div a b
   fromRational a = fromIntegral (numerator a) / fromIntegral (denominator a)
 instance Precision p => Real (CFixed p)
 instance Precision p => RealFrac (CFixed p) where

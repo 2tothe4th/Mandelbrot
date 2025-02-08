@@ -59,7 +59,7 @@ pan value = map (+ value)
 
 data SpecifiedPrecision
 instance Precision SpecifiedPrecision where
-    getBitCount = 128
+    getBitCount _ = 128
 
 main :: IO ()
 main = do
