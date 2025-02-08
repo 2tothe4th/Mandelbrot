@@ -30,7 +30,7 @@ ok :: CInt -> IO ()
 ok 0 = pure ()
 ok i = throwIO (FException i)
 
-instance Precision p => Ord (CFixed p) where
+instance Ord (CFixed p) where
   compare (CF a) (CF b) = unsafeDupablePerformIO do
     alloca \pA -> do
       poke pA a
@@ -41,10 +41,10 @@ instance Precision p => Ord (CFixed p) where
           -1 -> pure LT
           _ -> pure GT
 
-instance Precision p => Eq (CFixed p) where
+instance Eq (CFixed p) where
   a == b = compare a b == EQ
 
-fromBase10 :: Precision p =>  String -> MPBitCnt -> CFixed p
+fromBase10 :: String -> MPBitCnt -> CFixed p
 fromBase10 s b = unsafeDupablePerformIO do
   alloca \pa -> do
     mpf_init2 pa b
@@ -80,17 +80,11 @@ getPrecision a = unsafeDupablePerformIO do
     poke pA a
     mpf_get_prec pA
 
-ci :: Precision p => MPBitCnt -> Integer -> CFixed p
-ci p x = fromBase10 (show x) p
-
-cd :: Precision p => MPBitCnt -> Double -> CFixed p
-cd p x = fromBase10 (show x) p
-
 instance Precision p => Num (CFixed p) where
     (CF a) + (CF b) = CF $ performMPF2 mpf_add a b
     (CF a) * (CF b) = CF $ performMPF2 mpf_mul a b
     (CF a) - (CF b) = CF $ performMPF2 mpf_sub a b
-    abs (CF a) = CF $ performMPF1 mpf_abs a
+    abs x = if x >= 0 then x else -x
     signum a
       | a > 0 = 1
       | a == 0 = 0
@@ -99,11 +93,10 @@ instance Precision p => Num (CFixed p) where
 
 insertInto :: Int -> a -> [a] -> [a]
 insertInto 0 x xs = x : xs
+insertInto _ _ [] = error "Out of bounds"
 insertInto i x (y : ys) = y : insertInto (i - 1) x ys
-insertInto _ _ _ = undefined
 
-instance Precision p => Show (CFixed p) where
-  show :: Precision p => CFixed p -> String
+instance Show (CFixed p) where
   show (CF a) = unsafeDupablePerformIO do
     alloca \pA -> do
       poke pA a
@@ -112,22 +105,23 @@ instance Precision p => Show (CFixed p) where
           pMantissa <- mpf_get_str nullPtr pExponent 10 0 pA
           mantissa <- peekCString pMantissa <* free pMantissa
           exponent <- peek pExponent
+          let sign = if head mantissa == '-' then "-" else ""
+          let absMantissa = filter (/= '-') mantissa
 
           --https://machinecognitis.github.io/Math.Gmp.Native/html/9e7b9239-a7a8-4667-f6c7-bfc142d3f429.htm
-          print exponent
-          if fromIntegral exponent == length mantissa then
-            pure mantissa
+          if fromIntegral exponent == length absMantissa then
+            pure $ sign ++ absMantissa
           else if exponent >= 1 then
-            pure $ insertInto (fromIntegral exponent) '.' mantissa
+            pure $ sign ++ insertInto (fromIntegral exponent) '.' absMantissa
           else do
-            let longerMantissa = replicate (-fromIntegral exponent + 1) '0' ++ mantissa
-            pure $ insertInto 1 '.' longerMantissa
+            let longerAbsMantissa = replicate (-fromIntegral exponent + 1) '0' ++ absMantissa
+            pure $ sign ++ insertInto 1 '.' longerAbsMantissa
 
 
 
 
 instance Precision p => Fractional (CFixed p) where
-  CF a / CF b = CF $ performMPF2 mpf_div a b
+  CF a / CF b = CF $ performMPF2 mpf_div a b where !_ = traceId ("Denominator: " ++ show (CF b))
   fromRational a = fromIntegral (numerator a) / fromIntegral (denominator a)
 instance Precision p => Real (CFixed p)
 instance Precision p => RealFrac (CFixed p) where
