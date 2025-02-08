@@ -61,10 +61,10 @@ executable Mandelbrot
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: LargeDouble, CFixed
+    other-modules: CFixed
 
     -- LANGUAGE extensions used by modules in this package.
-    default-extensions: MonadComprehensions, BlockArguments, LambdaCase, DerivingVia, DerivingStrategies
+    default-extensions: MonadComprehensions, BlockArguments, LambdaCase, DerivingVia, DerivingStrategies, AllowAmbiguousTypes
 
     -- Other library packages from which modules are imported.
     build-depends:    base, array, hip, primitive, numbers, hgmp
